@@ -62,13 +62,25 @@ function staffVoiceQuoteItems(phase: BatchLifecyclePhase, batchNo: number): Staf
   ];
 }
 
-/** Voice runs that show agent status on the Menu details block instead of beside the primary CTA */
+/** Dictation-style voice runs (longer copy while buffering). */
 function isMenuDictateVoiceQuote(quote: string): boolean {
   const q = quote.toLowerCase().trim();
   return (
     q.includes("dictate menu") ||
     q.includes("open and dictate") ||
     q.includes("open menu details")
+  );
+}
+
+/** Any voice intent that should anchor buffering to the recipe panel (and open it), not the primary CTA. */
+function isRecipePanelVoiceQuote(quote: string): boolean {
+  const q = quote.toLowerCase().trim();
+  return (
+    q.includes("repeat recipe") ||
+    q.includes("open menu") ||
+    q.includes("menu details") ||
+    q.includes("describe packaging") ||
+    isMenuDictateVoiceQuote(quote)
   );
 }
 
@@ -84,6 +96,13 @@ function buildVoiceSimulationLines(
       "Dictating ingredients, steps, and packaging from your station…",
       "Attaching transcript to this batch's Menu details card…",
       "Menu details card ready for review.",
+    ];
+  }
+  if (isRecipePanelVoiceQuote(spoken)) {
+    return [
+      `Heard: “${spoken}” — opening recipe details…`,
+      "Surfacing ingredients, steps, oven, and packaging…",
+      "Recipe panel ready for review.",
     ];
   }
   const on = orderNo || 0;
@@ -260,7 +279,7 @@ export function StaffBatchCard({
     }
     const phaseAtStart = b.phase;
     const hadAiSuggestion = !!b.assignmentSuggestion;
-    if (isMenuDictateVoiceQuote(voiceRunQuote) && !menuExpandedRef.current) {
+    if (isRecipePanelVoiceQuote(voiceRunQuote) && !menuExpandedRef.current) {
       handlersRef.current.onToggleMenu();
     }
     const lines = buildVoiceSimulationLines(
@@ -307,8 +326,8 @@ export function StaffBatchCard({
   const phaseLabel =
     batch.phase === "waiting" ? "Waiting" : batch.phase === "cooking" ? "Cooking" : "Packed";
 
-  const menuDictationVoiceActive =
-    ctaFrozen && !!voiceRunQuote && !!ctaBufferLine && isMenuDictateVoiceQuote(voiceRunQuote);
+  const recipePanelVoiceActive =
+    ctaFrozen && !!voiceRunQuote && !!ctaBufferLine && isRecipePanelVoiceQuote(voiceRunQuote);
 
   const cookingInstructionForOrders =
     batch.cookingInstructions?.trim() || batch.recipeMenu.ovenInstructions.trim() || "";
@@ -352,7 +371,7 @@ export function StaffBatchCard({
           </div>
         </div>
         <div className="staff-card__menuDetailsWrap staff-card__menuDetailsWrap--header">
-          {menuDictationVoiceActive ? (
+          {recipePanelVoiceActive ? (
             <div className="staff-card__menuDictationStatus" role="status" aria-live="polite">
               <span className="staff-card__voiceAgentDot" aria-hidden />
               <span className="staff-card__menuDictationStatusText">{ctaBufferLine}</span>
@@ -487,7 +506,7 @@ export function StaffBatchCard({
               Ready for pickup
             </button>
           ) : null}
-          {ctaFrozen && ctaBufferLine && !menuDictationVoiceActive ? (
+          {ctaFrozen && ctaBufferLine && !recipePanelVoiceActive ? (
             <p className="staff-card__voiceAgentStatus staff-card__voiceAgentStatus--cta" aria-live="polite">
               <span className="staff-card__voiceAgentDot" aria-hidden />
               {ctaBufferLine}
@@ -523,13 +542,13 @@ export function StaffBatchCard({
               <span className="staff-card__voiceAgentDot staff-card__voiceAgentDot--idle" aria-hidden />
               Voice agent currently idle.
             </p>
-          ) : menuDictationVoiceActive ? (
+          ) : recipePanelVoiceActive ? (
             <p className="staff-card__voiceSuggestionsFoot">
-              Agent status is shown on the Menu details card while this voice run is active.
+              Agent status is shown on the recipe details panel while this voice run is active.
             </p>
           ) : (
             <p className="staff-card__voiceSuggestionsFoot">
-              Agent status is shown next to the primary action while a voice run is active.
+              Agent status is shown next to the primary action while this voice run is active.
             </p>
           )}
         </div>
