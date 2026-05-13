@@ -137,9 +137,7 @@ export function StaffStoreDashboard({
           <div className="dashboard__batchAndQueue">
             <StaffBatchCard
               staffKey={staffKey}
-              staffLabel={staffLabel}
               batch={lane.activeBatch}
-              queueLength={lane.queue.length}
               menuExpanded={lane.menuExpanded}
               now={now}
               onToggleMenu={onToggleMenu}

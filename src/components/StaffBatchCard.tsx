@@ -10,6 +10,16 @@ function formatRemaining(ms: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+function formatBatchWindowRemaining(ms: number): string {
+  if (ms <= 0) return "0 min";
+  const totalSec = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  if (m === 0) return `${s} s`;
+  if (s === 0) return `${m} min`;
+  return `${m} min ${s} s`;
+}
+
 export function SpeakAloudIcon() {
   return (
     <svg className="staff-card__voiceIcon" width="18" height="18" viewBox="0 0 24 24" aria-hidden>
@@ -21,11 +31,20 @@ export function SpeakAloudIcon() {
   );
 }
 
+function BatchWindowInfoIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+      />
+    </svg>
+  );
+}
+
 type StaffVoiceQuoteItem = {
   id: string;
-  /** Phrase used for simulation steps and intent matching */
   spoken: string;
-  /** Button label, e.g. Trigger "Batch #12 Cooking" */
   display: string;
 };
 
@@ -57,13 +76,23 @@ function staffVoiceQuoteItems(phase: BatchLifecyclePhase, batchNo: number): Staf
   ];
 }
 
-/** Voice runs that show agent status on the Menu details block instead of beside the primary CTA */
 function isMenuDictateVoiceQuote(quote: string): boolean {
   const q = quote.toLowerCase().trim();
   return (
     q.includes("dictate menu") ||
     q.includes("open and dictate") ||
     q.includes("open menu details")
+  );
+}
+
+function isRecipePanelVoiceQuote(quote: string): boolean {
+  const q = quote.toLowerCase().trim();
+  return (
+    q.includes("repeat recipe") ||
+    q.includes("open menu") ||
+    q.includes("menu details") ||
+    q.includes("describe packaging") ||
+    isMenuDictateVoiceQuote(quote)
   );
 }
 
@@ -79,6 +108,13 @@ function buildVoiceSimulationLines(
       "Dictating ingredients, steps, and packaging from your station…",
       "Attaching transcript to this batch's Menu details card…",
       "Menu details card ready for review.",
+    ];
+  }
+  if (isRecipePanelVoiceQuote(spoken)) {
+    return [
+      `Heard: “${spoken}” — opening recipe details…`,
+      "Surfacing ingredients, steps, oven, and packaging…",
+      "Recipe panel ready for review.",
     ];
   }
   const on = orderNo || 0;
@@ -180,9 +216,7 @@ function applyVoiceCtaAfterSimulation(
 
 type Props = {
   staffKey: StaffKey;
-  staffLabel: string;
   batch: KitchenBatch | null;
-  queueLength: number;
   menuExpanded: boolean;
   now: number;
   onToggleMenu: () => void;
@@ -194,9 +228,7 @@ type Props = {
 
 export function StaffBatchCard({
   staffKey,
-  staffLabel,
   batch,
-  queueLength,
   menuExpanded,
   now,
   onToggleMenu,
@@ -222,6 +254,7 @@ export function StaffBatchCard({
 
   const [voiceRunQuote, setVoiceRunQuote] = useState<string | null>(null);
   const [ctaBufferLine, setCtaBufferLine] = useState("");
+  const [batchWindowInfoOpen, setBatchWindowInfoOpen] = useState(false);
 
   const batchRef = useRef(batch);
   batchRef.current = batch;
@@ -247,6 +280,7 @@ export function StaffBatchCard({
   useEffect(() => {
     setVoiceRunQuote(null);
     setCtaBufferLine("");
+    setBatchWindowInfoOpen(false);
   }, [batch?.id]);
 
   useEffect(() => {
@@ -259,7 +293,7 @@ export function StaffBatchCard({
     }
     const phaseAtStart = b.phase;
     const hadAiSuggestion = !!b.assignmentSuggestion;
-    if (isMenuDictateVoiceQuote(voiceRunQuote) && !menuExpandedRef.current) {
+    if (isRecipePanelVoiceQuote(voiceRunQuote) && !menuExpandedRef.current) {
       handlersRef.current.onToggleMenu();
     }
     const lines = buildVoiceSimulationLines(
@@ -295,13 +329,10 @@ export function StaffBatchCard({
   if (!batch) {
     return (
       <section className="staff-card staff-card--empty" aria-labelledby={`${staffKey}-heading`}>
-        <h2 id={`${staffKey}-heading`} className="staff-card__title">
-          {staffLabel}
+        <h2 id={`${staffKey}-heading`} className="staff-card__title staff-card__title--emptyLane">
+          No active batch
         </h2>
         <p className="staff-card__empty">No active batch. Next in queue will appear here.</p>
-        {queueLength > 0 ? (
-          <p className="staff-card__queue">Queued batches: {queueLength}</p>
-        ) : null}
       </section>
     );
   }
@@ -309,31 +340,66 @@ export function StaffBatchCard({
   const phaseLabel =
     batch.phase === "waiting" ? "Waiting" : batch.phase === "cooking" ? "Cooking" : "Packed";
 
-  const menuDictationVoiceActive =
-    ctaFrozen && !!voiceRunQuote && !!ctaBufferLine && isMenuDictateVoiceQuote(voiceRunQuote);
+  const recipePanelVoiceActive =
+    ctaFrozen && !!voiceRunQuote && !!ctaBufferLine && isRecipePanelVoiceQuote(voiceRunQuote);
+
+  const cookingInstructionForOrders =
+    batch.cookingInstructions?.trim() || batch.recipeMenu.ovenInstructions.trim() || "";
+  const packagingInstructionForOrders = batch.recipeMenu.packagingInstructions.trim() || "";
 
   return (
     <section className="staff-card" aria-labelledby={`${staffKey}-heading`}>
       <header className="staff-card__header">
-        <h2 id={`${staffKey}-heading`} className="staff-card__title">
-          {staffLabel}
-        </h2>
         <div className="staff-card__headerRow">
-          <span className="staff-card__batchId">Batch #{batch.batchNo}</span>
+          <div className="staff-card__headerMain">
+            <h2 id={`${staffKey}-heading`} className="staff-card__batchHeading">
+              Batch #{batch.batchNo}
+            </h2>
+            <p className="staff-card__recipeMeta">
+              {batch.recipeName}
+              <span className="staff-card__qty"> · Qty {batch.quantity}</span>
+            </p>
+          </div>
           <div className="staff-card__headerRight">
             <span className={`staff-card__phase staff-card__phase--${batch.phase}`}>{phaseLabel}</span>
             <div className="staff-card__headerTimers" aria-live="polite">
               {batch.phase === "waiting" && waitingRemainingMs !== null ? (
-                <span className="staff-card__timer staff-card__timer--wait">
-                  Batch window: {formatRemaining(waitingRemainingMs)} left
-                </span>
+                <div className="staff-card__waitTimerCluster">
+                  <span
+                    className="staff-card__timer staff-card__timer--wait"
+                    aria-label={`Batch window remaining: ${formatRemaining(waitingRemainingMs)}`}
+                  >
+                    {formatBatchWindowRemaining(waitingRemainingMs)}
+                  </span>
+                  <div className="staff-card__batchWindowInfo">
+                    <button
+                      type="button"
+                      className="staff-card__batchWindowInfoBtn"
+                      aria-expanded={batchWindowInfoOpen}
+                      aria-controls={`${staffKey}-batch-window-info`}
+                      onClick={() => setBatchWindowInfoOpen((o) => !o)}
+                      aria-label="About the batch window timer"
+                    >
+                      <BatchWindowInfoIcon />
+                    </button>
+                    {batchWindowInfoOpen ? (
+                      <div
+                        id={`${staffKey}-batch-window-info`}
+                        className="staff-card__batchWindowInfoPopover"
+                        role="status"
+                      >
+                        We are waiting for more similar orders to be autoassigned to this batch.
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
               ) : null}
               {batch.phase === "cooking" && cookingRemainingMs !== null ? (
                 <span
                   className="staff-card__timer staff-card__timer--cook"
-                  aria-label={`Cooking time remaining, ${formatRemaining(cookingRemainingMs)}`}
+                  aria-label={`Cooking time remaining: ${formatBatchWindowRemaining(cookingRemainingMs)}`}
                 >
-                  {formatRemaining(cookingRemainingMs)} left
+                  {formatBatchWindowRemaining(cookingRemainingMs)}
                 </span>
               ) : null}
               {batch.phase === "packed" ? (
@@ -344,17 +410,46 @@ export function StaffBatchCard({
             </div>
           </div>
         </div>
-        <p className="staff-card__recipe">
-          {batch.recipeName}
-          <span className="staff-card__qty"> · Qty {batch.quantity}</span>
-          <span className={`staff-card__prio staff-card__prio--${batch.priority}`}>{batch.priority}</span>
-        </p>
-        {batch.cookingInstructions ? (
-          <p className="staff-card__instructions">{batch.cookingInstructions}</p>
-        ) : null}
-        {queueLength > 0 ? (
-          <p className="staff-card__queue">Queued batches: {queueLength}</p>
-        ) : null}
+
+        <div className="staff-card__menuDetailsWrap staff-card__menuDetailsWrap--header">
+          {recipePanelVoiceActive ? (
+            <div className="staff-card__menuDictationStatus" role="status" aria-live="polite">
+              <span className="staff-card__voiceAgentDot" aria-hidden />
+              <span className="staff-card__menuDictationStatusText">{ctaBufferLine}</span>
+            </div>
+          ) : null}
+          <CollapsibleMenu
+            id={`menu-${staffKey}`}
+            title={`${batch.recipeName} Recipe Details`}
+            expanded={menuExpanded}
+            onToggle={onToggleMenu}
+          >
+            <dl className="staff-card__menuGrid">
+              <dt>Ingredients</dt>
+              <dd>
+                <ul>
+                  {batch.recipeMenu.ingredients.map((x) => (
+                    <li key={x}>{x}</li>
+                  ))}
+                </ul>
+              </dd>
+              <dt>Steps</dt>
+              <dd>
+                <ol>
+                  {batch.recipeMenu.steps.map((x, i) => (
+                    <li key={i}>{x}</li>
+                  ))}
+                </ol>
+              </dd>
+              <dt>Oven</dt>
+              <dd>{batch.recipeMenu.ovenInstructions}</dd>
+              <dt>Packaging</dt>
+              <dd>{batch.recipeMenu.packagingInstructions}</dd>
+              <dt>Notes</dt>
+              <dd>{batch.recipeMenu.specialNotes}</dd>
+            </dl>
+          </CollapsibleMenu>
+        </div>
       </header>
 
       {batch.delayed && batch.phase === "cooking" ? (
@@ -365,53 +460,36 @@ export function StaffBatchCard({
 
       <div className="staff-card__body">
         <h3 className="staff-card__subheading">Orders in this batch</h3>
-        <ul className="staff-card__orders">
+        <div className="staff-card__orderCards" role="list">
           {batch.orders.map((o) => (
-            <li key={o.orderId}>
-              <span className="staff-card__orderId">Order #{o.orderNo}</span>
-              {o.requirement ? <span className="staff-card__req"> — {o.requirement}</span> : null}
-            </li>
+            <article key={o.orderId} className="staff-card__orderCard" role="listitem">
+              <header className="staff-card__orderCardHead">
+                <span className="staff-card__orderId">Order #{o.orderNo}</span>
+              </header>
+              <div className="staff-card__orderInstructionGrid">
+                <div className="staff-card__orderInstructionBlock">
+                  <h4 className="staff-card__orderInstructionLabel">Cooking instruction</h4>
+                  {cookingInstructionForOrders ? (
+                    <p className="staff-card__orderInstructionText">{cookingInstructionForOrders}</p>
+                  ) : (
+                    <p className="staff-card__orderInstructionText staff-card__orderInstructionText--muted">
+                      Not specified for this batch.
+                    </p>
+                  )}
+                </div>
+                <div className="staff-card__orderInstructionBlock staff-card__orderInstructionBlock--packaging">
+                  <h4 className="staff-card__orderInstructionLabel">Packaging instructions</h4>
+                  {packagingInstructionForOrders ? (
+                    <p className="staff-card__orderInstructionText">{packagingInstructionForOrders}</p>
+                  ) : (
+                    <p className="staff-card__orderInstructionText staff-card__orderInstructionText--muted">
+                      Not specified for this batch.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </article>
           ))}
-        </ul>
-
-        <div className="staff-card__menuDetailsWrap">
-          {menuDictationVoiceActive ? (
-            <div className="staff-card__menuDictationStatus" role="status" aria-live="polite">
-              <span className="staff-card__voiceAgentDot" aria-hidden />
-              <span className="staff-card__menuDictationStatusText">{ctaBufferLine}</span>
-            </div>
-          ) : null}
-          <CollapsibleMenu
-            id={`menu-${staffKey}`}
-            title="Menu details"
-            expanded={menuExpanded}
-            onToggle={onToggleMenu}
-          >
-            <dl className="staff-card__menuGrid">
-            <dt>Ingredients</dt>
-            <dd>
-              <ul>
-                {batch.recipeMenu.ingredients.map((x) => (
-                  <li key={x}>{x}</li>
-                ))}
-              </ul>
-            </dd>
-            <dt>Steps</dt>
-            <dd>
-              <ol>
-                {batch.recipeMenu.steps.map((x, i) => (
-                  <li key={i}>{x}</li>
-                ))}
-              </ol>
-            </dd>
-            <dt>Oven</dt>
-            <dd>{batch.recipeMenu.ovenInstructions}</dd>
-            <dt>Packaging</dt>
-            <dd>{batch.recipeMenu.packagingInstructions}</dd>
-            <dt>Notes</dt>
-            <dd>{batch.recipeMenu.specialNotes}</dd>
-            </dl>
-          </CollapsibleMenu>
         </div>
       </div>
 
@@ -468,7 +546,7 @@ export function StaffBatchCard({
               Ready for pickup
             </button>
           ) : null}
-          {ctaFrozen && ctaBufferLine && !menuDictationVoiceActive ? (
+          {ctaFrozen && ctaBufferLine && !recipePanelVoiceActive ? (
             <p className="staff-card__voiceAgentStatus staff-card__voiceAgentStatus--cta" aria-live="polite">
               <span className="staff-card__voiceAgentDot" aria-hidden />
               {ctaBufferLine}
@@ -504,13 +582,13 @@ export function StaffBatchCard({
               <span className="staff-card__voiceAgentDot staff-card__voiceAgentDot--idle" aria-hidden />
               Voice agent currently idle.
             </p>
-          ) : menuDictationVoiceActive ? (
+          ) : recipePanelVoiceActive ? (
             <p className="staff-card__voiceSuggestionsFoot">
-              Agent status is shown on the Menu details card while this voice run is active.
+              Agent status is shown on the recipe details panel while this voice run is active.
             </p>
           ) : (
             <p className="staff-card__voiceSuggestionsFoot">
-              Agent status is shown next to the primary action while a voice run is active.
+              Agent status is shown next to the primary action while this voice run is active.
             </p>
           )}
         </div>
