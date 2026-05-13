@@ -10,7 +10,6 @@ import type {
 } from "../types/kitchen";
 import { StaffBatchCard, SpeakAloudIcon } from "../components/StaffBatchCard";
 import { StatusSidebar } from "../components/StatusSidebar";
-import { VoiceAiPanel } from "../components/VoiceAiPanel";
 
 function normalizeRecipeName(name: string): string {
   return name.trim().toLowerCase();
@@ -30,7 +29,6 @@ type Props = {
   onMarkPacked: () => void;
   onMarkReadyForPickup: () => void;
   onInjectDemo: (mode: "jit" | "smart") => void;
-  onVoice: (command: string) => void;
   onMergeQueueBatchesIntoActive: (sourceBatchIds: string[]) => void;
   readyForPickup: ReadyForPickupOrder[];
   pickedUp: PickedUpOrder[];
@@ -56,7 +54,6 @@ export function StaffStoreDashboard({
   onMarkPacked,
   onMarkReadyForPickup,
   onInjectDemo,
-  onVoice,
   onMergeQueueBatchesIntoActive,
   readyForPickup,
   pickedUp,
@@ -267,8 +264,6 @@ export function StaffStoreDashboard({
             className="status-sidebar--staffHorizontal"
             ariaLabel="Pickup and delivery"
           />
-
-          <VoiceAiPanel staffKey={staffKey} onCommand={onVoice} />
         </main>
       </div>
     </div>

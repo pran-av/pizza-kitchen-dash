@@ -31,7 +31,6 @@ export type AppAction =
   | { type: "MARK_PICKED_UP"; storeId: StoreId; tokenId: string }
   | { type: "MARK_DELIVERED"; storeId: StoreId; tokenId: string }
   | { type: "SET_AGENT_STATUS"; storeId: StoreId; agentId: string; status: StoreSlice["agents"][number]["status"] }
-  | { type: "VOICE_COMMAND"; storeId: StoreId; staffKey: StaffKey; command: string }
   | { type: "MERGE_QUEUE_BATCHES_INTO_ACTIVE"; storeId: StoreId; staffKey: StaffKey; sourceBatchIds: string[] };
 
 function storeIndex(stores: StoreSlice[], id: StoreId): number {
@@ -166,102 +165,6 @@ function mergeQueueBatchesIntoActive(slice: StoreSlice, staffKey: StaffKey, sour
       [staffKey]: { ...lane, activeBatch: newActive, queue: newQueue },
     },
   };
-}
-
-function voiceDispatch(state: AppState, storeId: StoreId, staffKey: StaffKey, command: string, now: number): AppState {
-  const c = command.toLowerCase().trim();
-  if (c.includes("start cooking")) {
-    const slice = state.stores[storeIndex(state.stores, storeId)];
-    const batch = slice?.lanes[staffKey].activeBatch;
-    if (batch?.phase === "waiting" && batch.assignmentSuggestion) {
-      return appReducer(state, { type: "ACCEPT_AI_SUGGESTION", storeId, staffKey }, now);
-    }
-    if (batch?.phase === "waiting") {
-      return appReducer(state, { type: "START_COOKING", storeId, staffKey }, now);
-    }
-    return state;
-  }
-  if (
-    c.includes("repeat recipe") ||
-    c.includes("recipe steps") ||
-    c.includes("open menu") ||
-    c.includes("menu details") ||
-    c.includes("describe packaging") ||
-    c.includes("dictate menu") ||
-    c.includes("open and dictate")
-  ) {
-    const lane = state.stores[storeIndex(state.stores, storeId)]?.lanes[staffKey];
-    if (!lane?.menuExpanded) {
-      return mapStore(state, storeId, (slice) => ({
-        ...slice,
-        lanes: {
-          ...slice.lanes,
-          [staffKey]: { ...slice.lanes[staffKey], menuExpanded: true },
-        },
-      }));
-    }
-    return state;
-  }
-  if (c.includes("show next") || c.includes("next order")) {
-    const slice = state.stores[storeIndex(state.stores, storeId)];
-    if (!slice) return state;
-    const lane = slice.lanes[staffKey];
-    if (lane.activeBatch) return state;
-    const q = lane.queue[0];
-    if (!q) return state;
-    return mapStore(state, storeId, (s) => ({
-      ...s,
-      lanes: {
-        ...s.lanes,
-        [staffKey]: {
-          ...s.lanes[staffKey],
-          activeBatch: resetBatchTimersForActivation({ ...q }, now),
-          queue: s.lanes[staffKey].queue.slice(1),
-        },
-      },
-    }));
-  }
-  if (c.includes("mark order packed")) {
-    return appReducer(state, { type: "MARK_ORDER_PACKED", storeId, staffKey }, now);
-  }
-  if (c.includes("mark batch complete") || c.includes("mark final batch complete")) {
-    const slice = state.stores[storeIndex(state.stores, storeId)];
-    const b = slice?.lanes[staffKey].activeBatch;
-    if (b?.phase === "cooking") {
-      return appReducer(state, { type: "MARK_ORDER_PACKED", storeId, staffKey }, now);
-    }
-    if (b?.phase === "packed") {
-      return appReducer(state, { type: "MARK_READY_FOR_PICKUP", storeId, staffKey }, now);
-    }
-    return state;
-  }
-  if (c.includes("packed")) {
-    return appReducer(state, { type: "MARK_ORDER_PACKED", storeId, staffKey }, now);
-  }
-  if (c.includes("ready for pickup")) {
-    return appReducer(state, { type: "MARK_READY_FOR_PICKUP", storeId, staffKey }, now);
-  }
-  if (c.includes("pending") || c.includes("how many")) {
-    return state;
-  }
-  if (c.includes("fetch similar orders") && c.includes("current batch")) {
-    const slice = state.stores[storeIndex(state.stores, storeId)];
-    if (!slice) return state;
-    const lane = slice.lanes[staffKey];
-    const active = lane.activeBatch;
-    if (!active || (active.phase !== "waiting" && active.phase !== "cooking")) return state;
-    const activeNorm = normalizeRecipeName(active.recipeName);
-    const ids = lane.queue
-      .filter((b) => normalizeRecipeName(b.recipeName) === activeNorm)
-      .map((b) => b.id);
-    if (ids.length === 0) return state;
-    return appReducer(
-      state,
-      { type: "MERGE_QUEUE_BATCHES_INTO_ACTIVE", storeId, staffKey, sourceBatchIds: ids },
-      now,
-    );
-  }
-  return state;
 }
 
 function appReducer(state: AppState, action: AppAction, now: number): AppState {
@@ -478,8 +381,6 @@ function appReducer(state: AppState, action: AppAction, now: number): AppState {
       return mapStore(state, action.storeId, (slice) =>
         mergeQueueBatchesIntoActive(slice, action.staffKey, action.sourceBatchIds),
       );
-    case "VOICE_COMMAND":
-      return voiceDispatch(state, action.storeId, action.staffKey, action.command, now);
     default:
       return state;
   }

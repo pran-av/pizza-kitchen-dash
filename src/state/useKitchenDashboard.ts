@@ -145,13 +145,6 @@ export function useKitchenDashboard() {
     [selectedStoreId],
   );
 
-  const voiceCommand = useCallback(
-    (staffKey: StaffKey, command: string) => {
-      dispatch({ type: "VOICE_COMMAND", storeId: selectedStoreId, staffKey, command });
-    },
-    [selectedStoreId],
-  );
-
   return {
     state,
     now,
@@ -177,6 +170,5 @@ export function useKitchenDashboard() {
     markDelivered,
     setAgentStatus,
     mergeQueueBatchesIntoActive,
-    voiceCommand,
   };
 }
