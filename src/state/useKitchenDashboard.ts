@@ -133,6 +133,18 @@ export function useKitchenDashboard() {
     [selectedStoreId],
   );
 
+  const mergeQueueBatchesIntoActive = useCallback(
+    (staffKey: StaffKey, sourceBatchIds: string[]) => {
+      dispatch({
+        type: "MERGE_QUEUE_BATCHES_INTO_ACTIVE",
+        storeId: selectedStoreId,
+        staffKey,
+        sourceBatchIds,
+      });
+    },
+    [selectedStoreId],
+  );
+
   const voiceCommand = useCallback(
     (staffKey: StaffKey, command: string) => {
       dispatch({ type: "VOICE_COMMAND", storeId: selectedStoreId, staffKey, command });
@@ -164,6 +176,7 @@ export function useKitchenDashboard() {
     markPickedUp,
     markDelivered,
     setAgentStatus,
+    mergeQueueBatchesIntoActive,
     voiceCommand,
   };
 }

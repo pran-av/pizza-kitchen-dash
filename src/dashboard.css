@@ -301,7 +301,7 @@
 .staff-card__headerRow {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.5rem;
   margin-bottom: 0.25rem;
@@ -314,9 +314,11 @@
 
 .staff-card__headerRight {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.45rem;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  gap: 0.35rem;
+  text-align: right;
 }
 
 .staff-card__tokenPill {
@@ -647,8 +649,12 @@
   font-size: 0.88rem;
 }
 
-.staff-card__timerRow {
-  margin-top: 0.5rem;
+.staff-card__headerTimers {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+  max-width: 11.5rem;
 }
 
 .staff-card__timer--wait {
@@ -938,6 +944,41 @@
   width: 100%;
   justify-content: center;
 }
+
+.queue-strip__voiceSuggestions {
+  margin-top: 0.65rem;
+}
+
+.queue-strip__voiceSuggestions .staff-card__voiceQuoteGrid {
+  flex-direction: column;
+}
+
+.queue-strip__voiceSuggestions .btn--voiceSuggested {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.queue-strip__agentCopy {
+  flex: 1;
+  min-width: 0;
+}
+
+.queue-strip__agentMatches {
+  margin: 0 0 0.45rem;
+  padding-left: 1.1rem;
+  font-size: 0.74rem;
+  line-height: 1.35;
+  color: #475569;
+}
+
+.queue-strip__mergeCta {
+  width: 100%;
+  justify-content: center;
+}
+
 
 .status-sidebar--staffHorizontal {
   width: 100%;

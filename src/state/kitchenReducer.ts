@@ -31,7 +31,8 @@ export type AppAction =
   | { type: "MARK_PICKED_UP"; storeId: StoreId; tokenId: string }
   | { type: "MARK_DELIVERED"; storeId: StoreId; tokenId: string }
   | { type: "SET_AGENT_STATUS"; storeId: StoreId; agentId: string; status: StoreSlice["agents"][number]["status"] }
-  | { type: "VOICE_COMMAND"; storeId: StoreId; staffKey: StaffKey; command: string };
+  | { type: "VOICE_COMMAND"; storeId: StoreId; staffKey: StaffKey; command: string }
+  | { type: "MERGE_QUEUE_BATCHES_INTO_ACTIVE"; storeId: StoreId; staffKey: StaffKey; sourceBatchIds: string[] };
 
 function storeIndex(stores: StoreSlice[], id: StoreId): number {
   return stores.findIndex((s) => s.id === id);
@@ -130,6 +131,43 @@ function markReadyForPickupAndAdvance(s: StoreSlice, staffKey: StaffKey, now: nu
   };
 }
 
+function normalizeRecipeName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+/** Merge queued batches into the active batch when recipes match (case-insensitive). Removes only matched batches from the queue. */
+function mergeQueueBatchesIntoActive(slice: StoreSlice, staffKey: StaffKey, sourceBatchIds: string[]): StoreSlice {
+  const lane = slice.lanes[staffKey];
+  const active = lane.activeBatch;
+  if (!active) return slice;
+  if (active.phase !== "waiting" && active.phase !== "cooking") return slice;
+  if (sourceBatchIds.length === 0) return slice;
+
+  const activeNorm = normalizeRecipeName(active.recipeName);
+  const idSet = new Set(sourceBatchIds);
+  const toMerge = lane.queue.filter((b) => idSet.has(b.id) && normalizeRecipeName(b.recipeName) === activeNorm);
+  if (toMerge.length === 0) return slice;
+
+  const mergedIds = new Set(toMerge.map((b) => b.id));
+  const extraOrders = toMerge.flatMap((b) => b.orders);
+  const qtyAdd = toMerge.reduce((sum, b) => sum + b.quantity, 0);
+  const newQueue = lane.queue.filter((b) => !mergedIds.has(b.id));
+
+  const newActive: KitchenBatch = {
+    ...active,
+    orders: [...active.orders, ...extraOrders],
+    quantity: active.quantity + qtyAdd,
+  };
+
+  return {
+    ...slice,
+    lanes: {
+      ...slice.lanes,
+      [staffKey]: { ...lane, activeBatch: newActive, queue: newQueue },
+    },
+  };
+}
+
 function voiceDispatch(state: AppState, storeId: StoreId, staffKey: StaffKey, command: string, now: number): AppState {
   const c = command.toLowerCase().trim();
   if (c.includes("start cooking")) {
@@ -205,6 +243,23 @@ function voiceDispatch(state: AppState, storeId: StoreId, staffKey: StaffKey, co
   }
   if (c.includes("pending") || c.includes("how many")) {
     return state;
+  }
+  if (c.includes("fetch similar orders") && c.includes("current batch")) {
+    const slice = state.stores[storeIndex(state.stores, storeId)];
+    if (!slice) return state;
+    const lane = slice.lanes[staffKey];
+    const active = lane.activeBatch;
+    if (!active || (active.phase !== "waiting" && active.phase !== "cooking")) return state;
+    const activeNorm = normalizeRecipeName(active.recipeName);
+    const ids = lane.queue
+      .filter((b) => normalizeRecipeName(b.recipeName) === activeNorm)
+      .map((b) => b.id);
+    if (ids.length === 0) return state;
+    return appReducer(
+      state,
+      { type: "MERGE_QUEUE_BATCHES_INTO_ACTIVE", storeId, staffKey, sourceBatchIds: ids },
+      now,
+    );
   }
   return state;
 }
@@ -419,6 +474,10 @@ function appReducer(state: AppState, action: AppAction, now: number): AppState {
         };
       });
     }
+    case "MERGE_QUEUE_BATCHES_INTO_ACTIVE":
+      return mapStore(state, action.storeId, (slice) =>
+        mergeQueueBatchesIntoActive(slice, action.staffKey, action.sourceBatchIds),
+      );
     case "VOICE_COMMAND":
       return voiceDispatch(state, action.storeId, action.staffKey, action.command, now);
     default:

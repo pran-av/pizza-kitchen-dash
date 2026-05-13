@@ -10,7 +10,7 @@ function formatRemaining(ms: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-function SpeakAloudIcon() {
+export function SpeakAloudIcon() {
   return (
     <svg className="staff-card__voiceIcon" width="18" height="18" viewBox="0 0 24 24" aria-hidden>
       <path
@@ -327,6 +327,26 @@ export function StaffBatchCard({
           <span className="staff-card__batchId">Batch #{batch.batchNo}</span>
           <div className="staff-card__headerRight">
             <span className={`staff-card__phase staff-card__phase--${batch.phase}`}>{phaseLabel}</span>
+            <div className="staff-card__headerTimers" aria-live="polite">
+              {batch.phase === "waiting" && waitingRemainingMs !== null ? (
+                <span className="staff-card__timer staff-card__timer--wait">
+                  Batch window: {formatRemaining(waitingRemainingMs)} left
+                </span>
+              ) : null}
+              {batch.phase === "cooking" && cookingRemainingMs !== null ? (
+                <span
+                  className="staff-card__timer staff-card__timer--cook"
+                  aria-label={`Cooking time remaining, ${formatRemaining(cookingRemainingMs)}`}
+                >
+                  {formatRemaining(cookingRemainingMs)} left
+                </span>
+              ) : null}
+              {batch.phase === "packed" ? (
+                <span className="staff-card__timer staff-card__timer--packed">
+                  Packed — send to pickup when ready
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
         <p className="staff-card__recipe">
@@ -347,22 +367,6 @@ export function StaffBatchCard({
           Delayed — timer ended. Finish when ready; next batch only after you release pickup.
         </div>
       ) : null}
-
-      <div className="staff-card__timerRow" aria-live="polite">
-        {batch.phase === "waiting" && waitingRemainingMs !== null ? (
-          <span className="staff-card__timer staff-card__timer--wait">
-            Batch window: {formatRemaining(waitingRemainingMs)} left
-          </span>
-        ) : null}
-        {batch.phase === "cooking" && cookingRemainingMs !== null ? (
-          <span className="staff-card__timer staff-card__timer--cook">
-            Cooking: {formatRemaining(cookingRemainingMs)} left
-          </span>
-        ) : null}
-        {batch.phase === "packed" ? (
-          <span className="staff-card__timer staff-card__timer--packed">Packed — send to pickup when ready</span>
-        ) : null}
-      </div>
 
       <div className="staff-card__body">
         <h3 className="staff-card__subheading">Orders in this batch</h3>

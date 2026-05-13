@@ -7,6 +7,10 @@ type Props = {
 };
 
 const COMMANDS: { label: string; command: string }[] = [
+  {
+    label: 'Trigger "Fetch Similar Orders and add to Current Batch"',
+    command: "Fetch Similar Orders and add to Current Batch",
+  },
   { label: "Start cooking", command: "Start cooking" },
   { label: "Show next order", command: "Show next order" },
   { label: "Open and Dictate Menu Details", command: "Open and Dictate Menu Details" },
