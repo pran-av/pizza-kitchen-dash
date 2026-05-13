@@ -9,6 +9,16 @@ function formatRemaining(ms: number): string {
   const s = totalSec % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
+function formatBatchWindowRemaining(ms: number): string {
+  if (ms <= 0) return "0 min";
+  const totalSec = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  if (m === 0) return `${s} s`;
+  if (s === 0) return `${m} min`;
+  return `${m} min ${s} s`;
+}
+
 
 export function SpeakAloudIcon() {
   return (
@@ -16,6 +26,18 @@ export function SpeakAloudIcon() {
       <path
         fill="currentColor"
         d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"
+      />
+    </svg>
+  );
+}
+
+
+function BatchWindowInfoIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
       />
     </svg>
   );
@@ -242,6 +264,7 @@ export function StaffBatchCard({
 
   const [voiceRunQuote, setVoiceRunQuote] = useState<string | null>(null);
   const [ctaBufferLine, setCtaBufferLine] = useState("");
+  const [batchWindowInfoOpen, setBatchWindowInfoOpen] = useState(false);
 
   const batchRef = useRef(batch);
   batchRef.current = batch;
@@ -267,6 +290,7 @@ export function StaffBatchCard({
   useEffect(() => {
     setVoiceRunQuote(null);
     setCtaBufferLine("");
+    setBatchWindowInfoOpen(false);
   }, [batch?.id]);
 
   useEffect(() => {
@@ -350,9 +374,35 @@ export function StaffBatchCard({
             <span className={`staff-card__phase staff-card__phase--${batch.phase}`}>{phaseLabel}</span>
             <div className="staff-card__headerTimers" aria-live="polite">
               {batch.phase === "waiting" && waitingRemainingMs !== null ? (
-                <span className="staff-card__timer staff-card__timer--wait">
-                  Batch window: {formatRemaining(waitingRemainingMs)} left
-                </span>
+                <div className="staff-card__waitTimerCluster">
+                  <span
+                    className="staff-card__timer staff-card__timer--wait"
+                    aria-label={`Batch window remaining: ${formatRemaining(waitingRemainingMs)}`}
+                  >
+                    {formatBatchWindowRemaining(waitingRemainingMs)}
+                  </span>
+                  <div className="staff-card__batchWindowInfo">
+                    <button
+                      type="button"
+                      className="staff-card__batchWindowInfoBtn"
+                      aria-expanded={batchWindowInfoOpen}
+                      aria-controls={`${staffKey}-batch-window-info`}
+                      onClick={() => setBatchWindowInfoOpen((o) => !o)}
+                      aria-label="About the batch window timer"
+                    >
+                      <BatchWindowInfoIcon />
+                    </button>
+                    {batchWindowInfoOpen ? (
+                      <div
+                        id={`${staffKey}-batch-window-info`}
+                        className="staff-card__batchWindowInfoPopover"
+                        role="status"
+                      >
+                        We are waiting for more similar orders to be autoassigned to this batch.
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
               ) : null}
               {batch.phase === "cooking" && cookingRemainingMs !== null ? (
                 <span

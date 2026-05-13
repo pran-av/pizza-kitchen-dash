@@ -747,6 +747,73 @@
 
 .staff-card__timer--wait {
   color: #a16207;
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.staff-card__waitTimerCluster {
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  max-width: 100%;
+}
+
+.staff-card__waitTimerCluster .staff-card__timer--wait {
+  white-space: nowrap;
+}
+
+.staff-card__batchWindowInfo {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.staff-card__batchWindowInfoBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #64748b;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.staff-card__batchWindowInfoBtn:hover {
+  background: #f8fafc;
+  color: #334155;
+  border-color: #94a3b8;
+}
+
+.staff-card__batchWindowInfoBtn:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
+
+.staff-card__batchWindowInfoPopover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 6;
+  max-width: 16rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  box-shadow: 0 4px 14px rgb(15 23 42 / 12%);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  font-weight: 500;
+  color: #334155;
+  text-align: left;
 }
 
 .staff-card__timer--cook {
