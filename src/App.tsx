@@ -35,7 +35,7 @@ export default function App() {
       onMarkReadyForPickup={() => k.markReadyForPickup(staffKey)}
       onInjectDemo={k.injectDemoBatch}
       onVoice={(cmd) => k.voiceCommand(staffKey, cmd)}
-      onMergeQueueBatchesIntoActive={(ids) => k.mergeQueueBatchesIntoActive(staffKey, ids)}
+      onMergeQueueBatchesIntoActive={(ids: string[]) => k.mergeQueueBatchesIntoActive(staffKey, ids)}
       readyForPickup={k.currentStore.readyForPickup}
       pickedUp={k.currentStore.pickedUp}
       delivered={k.currentStore.delivered}

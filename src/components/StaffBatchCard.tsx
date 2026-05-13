@@ -185,9 +185,7 @@ function applyVoiceCtaAfterSimulation(
 
 type Props = {
   staffKey: StaffKey;
-  staffLabel: string;
   batch: KitchenBatch | null;
-  queueLength: number;
   menuExpanded: boolean;
   now: number;
   onToggleMenu: () => void;
@@ -199,9 +197,7 @@ type Props = {
 
 export function StaffBatchCard({
   staffKey,
-  staffLabel,
   batch,
-  queueLength,
   menuExpanded,
   now,
   onToggleMenu,
@@ -300,13 +296,10 @@ export function StaffBatchCard({
   if (!batch) {
     return (
       <section className="staff-card staff-card--empty" aria-labelledby={`${staffKey}-heading`}>
-        <h2 id={`${staffKey}-heading`} className="staff-card__title">
-          {staffLabel}
+        <h2 id={`${staffKey}-heading`} className="staff-card__title staff-card__title--emptyLane">
+          No active batch
         </h2>
         <p className="staff-card__empty">No active batch. Next in queue will appear here.</p>
-        {queueLength > 0 ? (
-          <p className="staff-card__queue">Queued batches: {queueLength}</p>
-        ) : null}
       </section>
     );
   }
@@ -324,11 +317,16 @@ export function StaffBatchCard({
   return (
     <section className="staff-card" aria-labelledby={`${staffKey}-heading`}>
       <header className="staff-card__header">
-        <h2 id={`${staffKey}-heading`} className="staff-card__title">
-          {staffLabel}
-        </h2>
         <div className="staff-card__headerRow">
-          <span className="staff-card__batchId">Batch #{batch.batchNo}</span>
+          <div className="staff-card__headerMain">
+            <h2 id={`${staffKey}-heading`} className="staff-card__batchHeading">
+              Batch #{batch.batchNo}
+            </h2>
+            <p className="staff-card__recipeMeta">
+              {batch.recipeName}
+              <span className="staff-card__qty"> · Qty {batch.quantity}</span>
+            </p>
+          </div>
           <div className="staff-card__headerRight">
             <span className={`staff-card__phase staff-card__phase--${batch.phase}`}>{phaseLabel}</span>
             <div className="staff-card__headerTimers" aria-live="polite">
@@ -353,61 +351,7 @@ export function StaffBatchCard({
             </div>
           </div>
         </div>
-        <p className="staff-card__recipe">
-          {batch.recipeName}
-          <span className="staff-card__qty"> · Qty {batch.quantity}</span>
-          <span className={`staff-card__prio staff-card__prio--${batch.priority}`}>{batch.priority}</span>
-        </p>
-        {batch.cookingInstructions ? (
-          <p className="staff-card__instructions">{batch.cookingInstructions}</p>
-        ) : null}
-        {queueLength > 0 ? (
-          <p className="staff-card__queue">Queued batches: {queueLength}</p>
-        ) : null}
-      </header>
-
-      {batch.delayed && batch.phase === "cooking" ? (
-        <div className="staff-card__delayed" role="alert">
-          Delayed — timer ended. Finish when ready; next batch only after you release pickup.
-        </div>
-      ) : null}
-
-      <div className="staff-card__body">
-        <h3 className="staff-card__subheading">Orders in this batch</h3>
-        <div className="staff-card__orderCards" role="list">
-          {batch.orders.map((o) => (
-            <article key={o.orderId} className="staff-card__orderCard" role="listitem">
-              <header className="staff-card__orderCardHead">
-                <span className="staff-card__orderId">Order #{o.orderNo}</span>
-                {o.requirement ? <p className="staff-card__orderReq">{o.requirement}</p> : null}
-              </header>
-              <div className="staff-card__orderInstructionGrid">
-                <div className="staff-card__orderInstructionBlock">
-                  <h4 className="staff-card__orderInstructionLabel">Cooking instruction</h4>
-                  {cookingInstructionForOrders ? (
-                    <p className="staff-card__orderInstructionText">{cookingInstructionForOrders}</p>
-                  ) : (
-                    <p className="staff-card__orderInstructionText staff-card__orderInstructionText--muted">
-                      Not specified for this batch.
-                    </p>
-                  )}
-                </div>
-                <div className="staff-card__orderInstructionBlock staff-card__orderInstructionBlock--packaging">
-                  <h4 className="staff-card__orderInstructionLabel">Packaging instructions</h4>
-                  {packagingInstructionForOrders ? (
-                    <p className="staff-card__orderInstructionText">{packagingInstructionForOrders}</p>
-                  ) : (
-                    <p className="staff-card__orderInstructionText staff-card__orderInstructionText--muted">
-                      Not specified for this batch.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-
-        <div className="staff-card__menuDetailsWrap">
+        <div className="staff-card__menuDetailsWrap staff-card__menuDetailsWrap--header">
           {menuDictationVoiceActive ? (
             <div className="staff-card__menuDictationStatus" role="status" aria-live="polite">
               <span className="staff-card__voiceAgentDot" aria-hidden />
@@ -416,7 +360,7 @@ export function StaffBatchCard({
           ) : null}
           <CollapsibleMenu
             id={`menu-${staffKey}`}
-            title="Menu details"
+            title={`${batch.recipeName} Recipe Details`}
             expanded={menuExpanded}
             onToggle={onToggleMenu}
           >
@@ -446,6 +390,48 @@ export function StaffBatchCard({
             </dl>
           </CollapsibleMenu>
         </div>
+      </header>
+
+      {batch.delayed && batch.phase === "cooking" ? (
+        <div className="staff-card__delayed" role="alert">
+          Delayed — timer ended. Finish when ready; next batch only after you release pickup.
+        </div>
+      ) : null}
+
+      <div className="staff-card__body">
+        <h3 className="staff-card__subheading">Orders in this batch</h3>
+        <div className="staff-card__orderCards" role="list">
+          {batch.orders.map((o) => (
+            <article key={o.orderId} className="staff-card__orderCard" role="listitem">
+              <header className="staff-card__orderCardHead">
+                <span className="staff-card__orderId">Order #{o.orderNo}</span>
+              </header>
+              <div className="staff-card__orderInstructionGrid">
+                <div className="staff-card__orderInstructionBlock">
+                  <h4 className="staff-card__orderInstructionLabel">Cooking instruction</h4>
+                  {cookingInstructionForOrders ? (
+                    <p className="staff-card__orderInstructionText">{cookingInstructionForOrders}</p>
+                  ) : (
+                    <p className="staff-card__orderInstructionText staff-card__orderInstructionText--muted">
+                      Not specified for this batch.
+                    </p>
+                  )}
+                </div>
+                <div className="staff-card__orderInstructionBlock staff-card__orderInstructionBlock--packaging">
+                  <h4 className="staff-card__orderInstructionLabel">Packaging instructions</h4>
+                  {packagingInstructionForOrders ? (
+                    <p className="staff-card__orderInstructionText">{packagingInstructionForOrders}</p>
+                  ) : (
+                    <p className="staff-card__orderInstructionText staff-card__orderInstructionText--muted">
+                      Not specified for this batch.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+
       </div>
 
       <footer className="staff-card__footer staff-card__footer--actions">

@@ -111,7 +111,7 @@ export function StaffStoreDashboard({
     <div className="dashboard dashboard--staff">
       <header className="dashboard__header">
         <div>
-          <h1 className="dashboard__title">Yann Kitchen Dash</h1>
+          <h1 className="dashboard__title">Welcome, Chef {staffLabel}</h1>
           <p className="dashboard__subtitle">{storeName}</p>
         </div>
         <div className="dashboard__headerActions">
@@ -137,9 +137,7 @@ export function StaffStoreDashboard({
           <div className="dashboard__batchAndQueue">
             <StaffBatchCard
               staffKey={staffKey}
-              staffLabel={staffLabel}
               batch={lane.activeBatch}
-              queueLength={lane.queue.length}
               menuExpanded={lane.menuExpanded}
               now={now}
               onToggleMenu={onToggleMenu}
@@ -193,7 +191,7 @@ export function StaffStoreDashboard({
                       type="button"
                       className="btn btn--voiceSuggested"
                       disabled={similarBusy}
-                      title='Scan the queue for batches with the same recipe as the current batch.'
+                      title="Scan the queue for batches with the same recipe as the current batch."
                       onClick={runFetchSimilar}
                     >
                       {"Trigger \"Fetch Similar Orders and add to Current Batch\""}
