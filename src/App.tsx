@@ -35,13 +35,11 @@ export default function App() {
       onMarkReadyForPickup={() => k.markReadyForPickup(staffKey)}
       onInjectDemo={k.injectDemoBatch}
       onMergeQueueBatchesIntoActive={(ids: string[]) => k.mergeQueueBatchesIntoActive(staffKey, ids)}
-      readyForPickup={k.currentStore.readyForPickup}
-      pickedUp={k.currentStore.pickedUp}
-      delivered={k.currentStore.delivered}
-      agents={k.currentStore.agents}
+      liveTrackingByDate={k.currentStore.liveTrackingByDate}
+      liveTrackingBoardDate={k.currentStore.liveTrackingBoardDate}
+      onLiveTrackingBoardDateChange={k.setLiveTrackingBoardDate}
       onMarkPickedUp={k.markPickedUp}
-      onMarkDelivered={k.markDelivered}
-      onAgentStatus={k.setAgentStatus}
+      onVoicePickup={k.voicePickup}
       headerRight={
         <button type="button" className="btn btn--ghost" onClick={k.logout}>
           Log out

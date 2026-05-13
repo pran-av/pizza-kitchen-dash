@@ -2,11 +2,14 @@ import type {
   AppState,
   DeliveryProvider,
   KitchenBatch,
+  LiveTrackingCard,
+  LiveTrackingDay,
   RecipeMenuDetails,
   StaffKey,
   StoreId,
   StoreSlice,
 } from "../types/kitchen";
+import { localDateKey } from "../types/kitchen";
 
 const BATCH_WINDOW_MS = 5 * 60 * 1000;
 const COOK_MS = 15 * 60 * 1000;
@@ -147,6 +150,56 @@ function buildStore(id: StoreId, name: string, now: number, seed: "a" | "b"): St
 
   const readySince = now - 4 * 60 * 1000;
   const readySince2 = now - 12 * 60 * 1000;
+  const todayKey = localDateKey(now);
+  const yesterdayKey = localDateKey(now - 86_400_000);
+
+  const readyAlex: LiveTrackingCard = {
+    cardId: `${id}-ready-8800`,
+    tokenId: "8800",
+    provider: "swiggy",
+    agentName: "Alex",
+    agentStatus: "en_route",
+    orders: [{ orderNo: 12 }, { orderNo: 13 }],
+    readySinceAt: readySince,
+  };
+  const readySam: LiveTrackingCard = {
+    cardId: `${id}-ready-9001`,
+    tokenId: "9001",
+    provider: "zomato",
+    agentName: "Sam",
+    agentStatus: "available",
+    orders: [{ orderNo: 104 }],
+    readySinceAt: readySince2,
+  };
+  const pickedJonas: LiveTrackingCard = {
+    cardId: `${id}-picked-6600`,
+    tokenId: "6600",
+    provider: "swiggy",
+    agentName: "Jonas",
+    agentStatus: "reached",
+    orders: [{ orderNo: 15 }],
+    pickedUpAt: now - 90_000,
+  };
+  const deliveredRahul: LiveTrackingCard = {
+    cardId: `${id}-del-5001`,
+    tokenId: "5001",
+    provider: "zomato",
+    agentName: "Rahul",
+    agentStatus: "en_route",
+    orders: [{ orderNo: 12 }, { orderNo: 13 }],
+    fulfilledAt: now - 3_600_000,
+  };
+
+  const todayBoard: LiveTrackingDay = {
+    ready: [readyAlex, readySam],
+    pickedUp: [pickedJonas],
+    delivered: [deliveredRahul],
+  };
+
+  const liveTrackingByDate: Record<string, LiveTrackingDay> = {
+    [todayKey]: todayBoard,
+    [yesterdayKey]: { ready: [], pickedUp: [], delivered: [] },
+  };
 
   return {
     id,
@@ -167,15 +220,12 @@ function buildStore(id: StoreId, name: string, now: number, seed: "a" | "b"): St
         menuExpanded: false,
       },
     },
-    readyForPickup: [
-      { tokenId: "8800", provider: "swiggy", readySinceAt: readySince },
-      { tokenId: "8801", provider: "zomato", readySinceAt: readySince2 },
-    ],
-    pickedUp: [{ tokenId: "6600", provider: "swiggy", pickedUpAt: now - 90_000 }],
-    delivered: [{ tokenId: "5001", provider: "zomato", fulfilledAt: now - 3600_000 }],
+    liveTrackingByDate,
+    liveTrackingBoardDate: todayKey,
+    lastLiveSimAtMs: now,
     agents: [
-      { id: `${id}-a1`, name: "Alex", tokenId: "8800", status: "available", provider: "swiggy" },
-      { id: `${id}-a2`, name: "Sam", tokenId: "8801", status: "reached", provider: "zomato" },
+      { id: `${id}-a1`, name: "Alex", tokenId: "8800", status: "en_route", provider: "swiggy" },
+      { id: `${id}-a2`, name: "Sam", tokenId: "9001", status: "available", provider: "zomato" },
       { id: `${id}-a3`, name: "Jordan", tokenId: null, status: "available", provider: "swiggy" },
     ],
     nextAssignee: "yann" satisfies StaffKey,

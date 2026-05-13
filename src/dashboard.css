@@ -1146,6 +1146,194 @@
   margin-top: 1rem;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.status-sidebar--liveTracking {
+  background: #fff;
+  border: 1px solid #d8dde6;
+  border-radius: 10px;
+  padding: 1rem 1rem 1.1rem;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+}
+
+.live-tracking__header {
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.live-tracking__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.live-tracking__dateWrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.live-tracking__dateSelect {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  min-height: 40px;
+  background: #f8fafc;
+}
+
+.live-tracking__sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.live-tracking__kanban {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+  align-items: start;
+  margin-bottom: 1rem;
+}
+
+.live-tracking__col {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.65rem 0.7rem;
+  background: #fafbfc;
+  min-height: 120px;
+}
+
+.live-tracking__colTitle {
+  margin: 0 0 0.25rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #334155;
+}
+
+.live-tracking__colCount {
+  margin: 0 0 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.live-tracking__colHint {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.live-tracking__colBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.live-tracking__empty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
+.live-tracking__card {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 0.55rem 0.6rem;
+  background: #fff;
+}
+
+.live-tracking__cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-bottom: 0.25rem;
+}
+
+.live-tracking__agentName {
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.live-tracking__token {
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #1e40af;
+}
+
+.live-tracking__statusLine {
+  margin: 0 0 0.4rem;
+  font-size: 0.78rem;
+  color: #475569;
+}
+
+.live-tracking__pending {
+  font-weight: 600;
+  color: #b45309;
+  font-variant-numeric: tabular-nums;
+}
+
+.live-tracking__orders {
+  list-style: none;
+  margin: 0 0 0.45rem;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.live-tracking__orderChip {
+  margin: 0;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  background: #e5e7eb;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.live-tracking__pickBtn {
+  width: 100%;
+  justify-content: center;
+  min-height: 44px;
+}
+
+.live-tracking__pickBuffer {
+  margin-top: 0.4rem;
+  width: 100%;
+  min-height: auto;
+}
+
+.live-tracking__voice {
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 960px) {
+  .live-tracking__kanban {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 900px) {
   .dashboard__batchAndQueue {
     flex-direction: column;
@@ -1451,6 +1639,10 @@ body.theme-high-contrast .staff-card__orderCard,
 body.theme-high-contrast .staff-card__orderInstructionBlock,
 body.theme-high-contrast .staff-card,
 body.theme-high-contrast .status-sidebar,
+body.theme-high-contrast .status-sidebar--liveTracking,
+body.theme-high-contrast .live-tracking__col,
+body.theme-high-contrast .live-tracking__card,
+body.theme-high-contrast .live-tracking__orderChip,
 body.theme-high-contrast .queue-strip,
 body.theme-high-contrast .login-screen__card,
 body.theme-high-contrast .metric-card,

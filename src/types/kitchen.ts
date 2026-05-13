@@ -74,23 +74,36 @@ export type DeliveryAgent = {
   provider: DeliveryProvider;
 };
 
-export type ReadyForPickupOrder = {
-  tokenId: string;
-  provider: DeliveryProvider;
-  readySinceAt: number;
+/** One handoff row on the Live Tracking board (orders may share a token / agent). */
+export type LiveTrackingOrderRef = {
+  orderNo: number;
 };
 
-export type PickedUpOrder = {
+export type LiveTrackingCard = {
+  cardId: string;
   tokenId: string;
   provider: DeliveryProvider;
-  pickedUpAt: number;
+  agentName: string;
+  agentStatus: AgentStatus;
+  orders: LiveTrackingOrderRef[];
+  readySinceAt?: number;
+  pickedUpAt?: number;
+  fulfilledAt?: number;
 };
 
-export type FulfilledDelivery = {
-  tokenId: string;
-  provider: DeliveryProvider;
-  fulfilledAt: number;
+export type LiveTrackingDay = {
+  ready: LiveTrackingCard[];
+  pickedUp: LiveTrackingCard[];
+  delivered: LiveTrackingCard[];
 };
+
+export function localDateKey(ms: number = Date.now()): string {
+  const d = new Date(ms);
+  const y = d.getFullYear();
+  const m = `${d.getMonth() + 1}`.padStart(2, "0");
+  const day = `${d.getDate()}`.padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
 export type StoreMetrics = {
   liveOrders: number;
@@ -104,9 +117,12 @@ export type StoreSlice = {
   id: StoreId;
   name: string;
   lanes: Record<StaffKey, StaffLane>;
-  readyForPickup: ReadyForPickupOrder[];
-  pickedUp: PickedUpOrder[];
-  delivered: FulfilledDelivery[];
+  /** Boards keyed by local YYYY-MM-DD; kitchen writes to “today” only. */
+  liveTrackingByDate: Record<string, LiveTrackingDay>;
+  /** Which day the Live Tracking UI is showing */
+  liveTrackingBoardDate: string;
+  /** Throttle simulated agent-app updates (picked → delivered). */
+  lastLiveSimAtMs: number;
   agents: DeliveryAgent[];
   nextAssignee: StaffKey;
   metrics: StoreMetrics;

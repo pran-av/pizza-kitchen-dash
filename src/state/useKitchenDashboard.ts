@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
-import type { AdminNavTab, AgentStatus, StaffKey, StoreId } from "../types/kitchen";
+import type { AdminNavTab, StaffKey, StoreId } from "../types/kitchen";
 import { getInitialState, kitchenReducer } from "./kitchenReducer";
 
 export function useKitchenDashboard() {
@@ -119,16 +119,16 @@ export function useKitchenDashboard() {
     [selectedStoreId],
   );
 
-  const markDelivered = useCallback(
-    (tokenId: string) => {
-      dispatch({ type: "MARK_DELIVERED", storeId: selectedStoreId, tokenId });
+  const setLiveTrackingBoardDate = useCallback(
+    (dateKey: string) => {
+      dispatch({ type: "SET_LIVE_TRACKING_BOARD_DATE", storeId: selectedStoreId, dateKey });
     },
     [selectedStoreId],
   );
 
-  const setAgentStatus = useCallback(
-    (agentId: string, status: AgentStatus) => {
-      dispatch({ type: "SET_AGENT_STATUS", storeId: selectedStoreId, agentId, status });
+  const voicePickup = useCallback(
+    (text: string) => {
+      dispatch({ type: "VOICE_PICKUP", storeId: selectedStoreId, text });
     },
     [selectedStoreId],
   );
@@ -167,8 +167,8 @@ export function useKitchenDashboard() {
     markReadyForPickup,
     injectDemoBatch,
     markPickedUp,
-    markDelivered,
-    setAgentStatus,
+    setLiveTrackingBoardDate,
+    voicePickup,
     mergeQueueBatchesIntoActive,
   };
 }

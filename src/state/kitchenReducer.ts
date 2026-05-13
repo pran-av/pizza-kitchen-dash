@@ -1,11 +1,14 @@
 import type {
   AppState,
   KitchenBatch,
-  ReadyForPickupOrder,
+  KitchenOrder,
+  LiveTrackingCard,
+  LiveTrackingDay,
   StaffKey,
   StoreId,
   StoreSlice,
 } from "../types/kitchen";
+import { localDateKey } from "../types/kitchen";
 import { createInitialAppState } from "../data/mockKitchen";
 
 export const COOK_DURATION_MS = 15 * 60 * 1000;
@@ -29,7 +32,8 @@ export type AppAction =
   | { type: "MARK_READY_FOR_PICKUP"; storeId: StoreId; staffKey: StaffKey }
   | { type: "INJECT_DEMO_BATCH"; storeId: StoreId; mode: "jit" | "smart" }
   | { type: "MARK_PICKED_UP"; storeId: StoreId; tokenId: string }
-  | { type: "MARK_DELIVERED"; storeId: StoreId; tokenId: string }
+  | { type: "SET_LIVE_TRACKING_BOARD_DATE"; storeId: StoreId; dateKey: string }
+  | { type: "VOICE_PICKUP"; storeId: StoreId; text: string }
   | { type: "SET_AGENT_STATUS"; storeId: StoreId; agentId: string; status: StoreSlice["agents"][number]["status"] }
   | { type: "MERGE_QUEUE_BATCHES_INTO_ACTIVE"; storeId: StoreId; staffKey: StaffKey; sourceBatchIds: string[] };
 
@@ -90,6 +94,114 @@ function applyCookingDelayed(batch: KitchenBatch, now: number): KitchenBatch {
   return { ...batch, delayed: true };
 }
 
+const EMPTY_LIVE_DAY: LiveTrackingDay = { ready: [], pickedUp: [], delivered: [] };
+
+function getDay(slice: StoreSlice, key: string): LiveTrackingDay {
+  return slice.liveTrackingByDate[key] ?? EMPTY_LIVE_DAY;
+}
+
+function setDay(slice: StoreSlice, key: string, day: LiveTrackingDay): StoreSlice {
+  return {
+    ...slice,
+    liveTrackingByDate: { ...slice.liveTrackingByDate, [key]: day },
+  };
+}
+
+function ordersToReadyCards(orders: KitchenOrder[], slice: StoreSlice, ts: number): LiveTrackingCard[] {
+  const by = new Map<string, KitchenOrder[]>();
+  for (const o of orders) {
+    const g = by.get(o.tokenId) ?? [];
+    g.push(o);
+    by.set(o.tokenId, g);
+  }
+  const cards: LiveTrackingCard[] = [];
+  for (const [tokenId, list] of by) {
+    const ag = slice.agents.find((a) => a.tokenId === tokenId);
+    cards.push({
+      cardId: `card-${tokenId}-${ts}`,
+      tokenId,
+      provider: list[0]!.provider,
+      agentName: ag?.name ?? "Dispatch",
+      agentStatus: ag?.status ?? "en_route",
+      orders: list.map((o) => ({ orderNo: o.orderNo })),
+      readySinceAt: ts,
+    });
+  }
+  return cards;
+}
+
+function mergeReadyWithNew(existing: LiveTrackingCard[], incoming: LiveTrackingCard[], ts: number): LiveTrackingCard[] {
+  const out = [...existing];
+  for (const c of incoming) {
+    const i = out.findIndex((x) => x.tokenId === c.tokenId);
+    if (i >= 0) {
+      const base = out[i]!;
+      out[i] = {
+        ...base,
+        orders: [...base.orders, ...c.orders],
+        readySinceAt: Math.min(base.readySinceAt ?? ts, c.readySinceAt ?? ts),
+      };
+    } else {
+      out.push(c);
+    }
+  }
+  return out;
+}
+
+function moveReadyToPickedUpByToken(slice: StoreSlice, tokenId: string, ts: number): StoreSlice {
+  const todayKey = localDateKey(ts);
+  const day = getDay(slice, todayKey);
+  const card = day.ready.find((c) => c.tokenId === tokenId);
+  if (!card) return slice;
+  const newReady = day.ready.filter((c) => c.tokenId !== tokenId);
+  const moved: LiveTrackingCard = {
+    ...card,
+    pickedUpAt: ts,
+    readySinceAt: undefined,
+    agentStatus: "reached",
+  };
+  const newDay: LiveTrackingDay = { ...day, ready: newReady, pickedUp: [...day.pickedUp, moved] };
+  const agents = slice.agents.map((a) => (a.tokenId === tokenId ? { ...a, status: "reached" as const } : a));
+  return { ...setDay(slice, todayKey, newDay), agents };
+}
+
+function advanceLiveTrackingSimulation(slice: StoreSlice, ts: number): StoreSlice {
+  const todayKey = localDateKey(ts);
+  const day = getDay(slice, todayKey);
+  if (day.pickedUp.length === 0) return slice;
+  if (ts - slice.lastLiveSimAtMs < 8000) return slice;
+  const [head, ...rest] = day.pickedUp;
+  const deliveredHead: LiveTrackingCard = {
+    ...head,
+    fulfilledAt: ts,
+    agentStatus: "en_route",
+  };
+  const nextDay: LiveTrackingDay = {
+    ...day,
+    pickedUp: rest,
+    delivered: [...day.delivered, deliveredHead],
+  };
+  const revenueDelta = 899 * Math.max(1, head.orders.length);
+  return {
+    ...setDay(slice, todayKey, nextDay),
+    lastLiveSimAtMs: ts,
+    agents: slice.agents.map((a) => (a.tokenId === head.tokenId ? { ...a, status: "en_route" } : a)),
+    metrics: {
+      ...slice.metrics,
+      deliveredTodayCount: slice.metrics.deliveredTodayCount + 1,
+      revenueTodayCents: slice.metrics.revenueTodayCents + revenueDelta,
+      liveOrders: Math.max(0, slice.metrics.liveOrders - head.orders.length),
+    },
+  };
+}
+
+function parseVoicePickupToken(text: string): string | null {
+  const lower = text.toLowerCase();
+  if (!lower.includes("picked")) return null;
+  const m = text.match(/\b(\d{4})\b/);
+  return m?.[1] ?? null;
+}
+
 function tickStoreSlice(slice: StoreSlice, now: number): StoreSlice {
   let lanes = { ...slice.lanes };
   (["yann", "pranav"] as const).forEach((key) => {
@@ -102,7 +214,9 @@ function tickStoreSlice(slice: StoreSlice, now: number): StoreSlice {
       lanes = { ...lanes, [key]: { ...lane, activeBatch: nb } };
     }
   });
-  return { ...slice, lanes };
+  let next: StoreSlice = { ...slice, lanes };
+  next = advanceLiveTrackingSimulation(next, now);
+  return next;
 }
 
 function markReadyForPickupAndAdvance(s: StoreSlice, staffKey: StaffKey, now: number): StoreSlice {
@@ -110,11 +224,11 @@ function markReadyForPickupAndAdvance(s: StoreSlice, staffKey: StaffKey, now: nu
   const active = lane.activeBatch;
   if (!active || active.phase !== "packed") return s;
 
-  const newReady: ReadyForPickupOrder[] = active.orders.map((o) => ({
-    tokenId: o.tokenId,
-    provider: o.provider,
-    readySinceAt: now,
-  }));
+  const todayKey = localDateKey(now);
+  const day = getDay(s, todayKey);
+  const newCards = ordersToReadyCards(active.orders, s, now);
+  const mergedReady = mergeReadyWithNew(day.ready, newCards, now);
+  const nextDay: LiveTrackingDay = { ...day, ready: mergedReady };
 
   const clearedLane: StoreSlice["lanes"][StaffKey] = {
     ...lane,
@@ -124,8 +238,7 @@ function markReadyForPickupAndAdvance(s: StoreSlice, staffKey: StaffKey, now: nu
   const afterAdvance = activateNextFromQueue(clearedLane, now);
 
   return {
-    ...s,
-    readyForPickup: [...s.readyForPickup, ...newReady],
+    ...setDay(s, todayKey, nextDay),
     lanes: { ...s.lanes, [staffKey]: afterAdvance },
   };
 }
@@ -285,32 +398,17 @@ function appReducer(state: AppState, action: AppAction, now: number): AppState {
     case "MARK_READY_FOR_PICKUP":
       return mapStore(state, action.storeId, (slice) => markReadyForPickupAndAdvance(slice, action.staffKey, now));
     case "MARK_PICKED_UP":
-      return mapStore(state, action.storeId, (slice) => {
-        const ready = slice.readyForPickup.find((t) => t.tokenId === action.tokenId);
-        if (!ready) return slice;
-        return {
-          ...slice,
-          readyForPickup: slice.readyForPickup.filter((t) => t.tokenId !== action.tokenId),
-          pickedUp: [...slice.pickedUp, { tokenId: ready.tokenId, provider: ready.provider, pickedUpAt: now }],
-        };
-      });
-    case "MARK_DELIVERED":
-      return mapStore(state, action.storeId, (slice) => {
-        const picked = slice.pickedUp.find((t) => t.tokenId === action.tokenId);
-        if (!picked) return slice;
-        const revenueDelta = 899;
-        return {
-          ...slice,
-          pickedUp: slice.pickedUp.filter((t) => t.tokenId !== action.tokenId),
-          delivered: [...slice.delivered, { tokenId: picked.tokenId, provider: picked.provider, fulfilledAt: now }],
-          metrics: {
-            ...slice.metrics,
-            deliveredTodayCount: slice.metrics.deliveredTodayCount + 1,
-            revenueTodayCents: slice.metrics.revenueTodayCents + revenueDelta,
-            liveOrders: Math.max(0, slice.metrics.liveOrders - 1),
-          },
-        };
-      });
+      return mapStore(state, action.storeId, (slice) => moveReadyToPickedUpByToken(slice, action.tokenId, now));
+    case "SET_LIVE_TRACKING_BOARD_DATE":
+      return mapStore(state, action.storeId, (slice) => ({
+        ...slice,
+        liveTrackingBoardDate: action.dateKey,
+      }));
+    case "VOICE_PICKUP": {
+      const token = parseVoicePickupToken(action.text);
+      if (!token) return state;
+      return mapStore(state, action.storeId, (slice) => moveReadyToPickedUpByToken(slice, token, now));
+    }
     case "SET_AGENT_STATUS":
       return mapStore(state, action.storeId, (slice) => ({
         ...slice,

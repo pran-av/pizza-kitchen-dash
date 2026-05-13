@@ -1,13 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import type {
-  AgentStatus,
-  DeliveryAgent,
-  FulfilledDelivery,
-  KitchenBatch,
-  PickedUpOrder,
-  ReadyForPickupOrder,
-  StaffKey,
-} from "../types/kitchen";
+import type { KitchenBatch, LiveTrackingDay, StaffKey } from "../types/kitchen";
 import { StaffBatchCard, SpeakAloudIcon } from "../components/StaffBatchCard";
 import { StatusSidebar } from "../components/StatusSidebar";
 
@@ -30,13 +22,11 @@ type Props = {
   onMarkReadyForPickup: () => void;
   onInjectDemo: (mode: "jit" | "smart") => void;
   onMergeQueueBatchesIntoActive: (sourceBatchIds: string[]) => void;
-  readyForPickup: ReadyForPickupOrder[];
-  pickedUp: PickedUpOrder[];
-  delivered: FulfilledDelivery[];
-  agents: DeliveryAgent[];
+  liveTrackingByDate: Record<string, LiveTrackingDay>;
+  liveTrackingBoardDate: string;
+  onLiveTrackingBoardDateChange: (dateKey: string) => void;
   onMarkPickedUp: (tokenId: string) => void;
-  onMarkDelivered: (tokenId: string) => void;
-  onAgentStatus: (agentId: string, status: AgentStatus) => void;
+  onVoicePickup: (text: string) => void;
   headerRight?: ReactNode;
 };
 
@@ -55,13 +45,11 @@ export function StaffStoreDashboard({
   onMarkReadyForPickup,
   onInjectDemo,
   onMergeQueueBatchesIntoActive,
-  readyForPickup,
-  pickedUp,
-  delivered,
-  agents,
+  liveTrackingByDate,
+  liveTrackingBoardDate,
+  onLiveTrackingBoardDateChange,
   onMarkPickedUp,
-  onMarkDelivered,
-  onAgentStatus,
+  onVoicePickup,
   headerRight,
 }: Props) {
   const [similarPreview, setSimilarPreview] = useState<KitchenBatch[] | null>(null);
@@ -254,15 +242,13 @@ export function StaffStoreDashboard({
 
           <StatusSidebar
             now={now}
-            readyForPickup={readyForPickup}
-            pickedUp={pickedUp}
-            delivered={delivered}
-            agents={agents}
+            liveTrackingByDate={liveTrackingByDate}
+            boardDateKey={liveTrackingBoardDate}
+            onBoardDateKeyChange={onLiveTrackingBoardDateChange}
             onMarkPickedUp={onMarkPickedUp}
-            onMarkDelivered={onMarkDelivered}
-            onAgentStatus={onAgentStatus}
+            onVoicePickup={onVoicePickup}
             className="status-sidebar--staffHorizontal"
-            ariaLabel="Pickup and delivery"
+            ariaLabel="Live tracking"
           />
         </main>
       </div>
