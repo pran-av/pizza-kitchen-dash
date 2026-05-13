@@ -317,6 +317,10 @@ export function StaffBatchCard({
   const menuDictationVoiceActive =
     ctaFrozen && !!voiceRunQuote && !!ctaBufferLine && isMenuDictateVoiceQuote(voiceRunQuote);
 
+  const cookingInstructionForOrders =
+    batch.cookingInstructions?.trim() || batch.recipeMenu.ovenInstructions.trim() || "";
+  const packagingInstructionForOrders = batch.recipeMenu.packagingInstructions.trim() || "";
+
   return (
     <section className="staff-card" aria-labelledby={`${staffKey}-heading`}>
       <header className="staff-card__header">
@@ -370,14 +374,38 @@ export function StaffBatchCard({
 
       <div className="staff-card__body">
         <h3 className="staff-card__subheading">Orders in this batch</h3>
-        <ul className="staff-card__orders">
+        <div className="staff-card__orderCards" role="list">
           {batch.orders.map((o) => (
-            <li key={o.orderId}>
-              <span className="staff-card__orderId">Order #{o.orderNo}</span>
-              {o.requirement ? <span className="staff-card__req"> — {o.requirement}</span> : null}
-            </li>
+            <article key={o.orderId} className="staff-card__orderCard" role="listitem">
+              <header className="staff-card__orderCardHead">
+                <span className="staff-card__orderId">Order #{o.orderNo}</span>
+                {o.requirement ? <p className="staff-card__orderReq">{o.requirement}</p> : null}
+              </header>
+              <div className="staff-card__orderInstructionGrid">
+                <div className="staff-card__orderInstructionBlock">
+                  <h4 className="staff-card__orderInstructionLabel">Cooking instruction</h4>
+                  {cookingInstructionForOrders ? (
+                    <p className="staff-card__orderInstructionText">{cookingInstructionForOrders}</p>
+                  ) : (
+                    <p className="staff-card__orderInstructionText staff-card__orderInstructionText--muted">
+                      Not specified for this batch.
+                    </p>
+                  )}
+                </div>
+                <div className="staff-card__orderInstructionBlock staff-card__orderInstructionBlock--packaging">
+                  <h4 className="staff-card__orderInstructionLabel">Packaging instructions</h4>
+                  {packagingInstructionForOrders ? (
+                    <p className="staff-card__orderInstructionText">{packagingInstructionForOrders}</p>
+                  ) : (
+                    <p className="staff-card__orderInstructionText staff-card__orderInstructionText--muted">
+                      Not specified for this batch.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </article>
           ))}
-        </ul>
+        </div>
 
         <div className="staff-card__menuDetailsWrap">
           {menuDictationVoiceActive ? (

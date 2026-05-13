@@ -356,15 +356,95 @@
 
 .staff-card__body {
   flex: 1;
-  padding-bottom: 0.5rem;
+  padding: 0.35rem 0 0.85rem;
 }
 
 .staff-card__subheading {
-  margin: 0 0 0.35rem;
-  font-size: 0.82rem;
+  margin: 0 0 0.65rem;
+  font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: #6b7280;
+}
+
+.staff-card__orderCards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 0.85rem;
+}
+
+.staff-card__orderCard {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.75rem 0.85rem 0.8rem;
+  background: #fafbff;
+  box-shadow: 0 1px 0 rgb(15 23 42 / 4%);
+}
+
+.staff-card__orderCardHead {
+  margin-bottom: 0.55rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.staff-card__orderCardHead .staff-card__orderId {
+  display: block;
+  font-size: 0.98rem;
+  margin: 0 0 0.2rem;
+}
+
+.staff-card__orderReq {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: #475569;
+}
+
+.staff-card__orderInstructionGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem 0.85rem;
+}
+
+@media (max-width: 560px) {
+  .staff-card__orderInstructionGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.staff-card__orderInstructionBlock {
+  min-width: 0;
+  padding: 0.5rem 0.55rem;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #eef0f4;
+}
+
+.staff-card__orderInstructionBlock--packaging {
+  border-color: #dbeafe;
+  background: #f8fafc;
+}
+
+.staff-card__orderInstructionLabel {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+
+.staff-card__orderInstructionText {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: #1e293b;
+}
+
+.staff-card__orderInstructionText--muted {
+  color: #94a3b8;
+  font-style: italic;
 }
 
 .staff-card__orders {
@@ -812,7 +892,7 @@
 }
 
 .staff-card__menuDetailsWrap {
-  margin-top: 0.35rem;
+  margin-top: 0.85rem;
 }
 
 .staff-card__menuDictationStatus {
@@ -1324,6 +1404,8 @@ body.theme-high-contrast {
 }
 
 body.theme-high-contrast .dashboard,
+body.theme-high-contrast .staff-card__orderCard,
+body.theme-high-contrast .staff-card__orderInstructionBlock,
 body.theme-high-contrast .staff-card,
 body.theme-high-contrast .status-sidebar,
 body.theme-high-contrast .queue-strip,
