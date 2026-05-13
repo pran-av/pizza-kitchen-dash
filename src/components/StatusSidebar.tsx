@@ -1,4 +1,4 @@
-import type { AgentStatus, DeliveryAgent, FulfilledDelivery, ReadyForPickupOrder } from "../types/kitchen";
+import type { AgentStatus, DeliveryAgent, FulfilledDelivery, PickedUpOrder, ReadyForPickupOrder } from "../types/kitchen";
 import { ProviderBadge } from "./ProviderBadge";
 
 const STATUS_OPTIONS: AgentStatus[] = ["available", "en_route", "reached"];
@@ -18,27 +18,50 @@ function nextStatus(current: AgentStatus): AgentStatus {
   return STATUS_OPTIONS[(i + 1) % STATUS_OPTIONS.length] ?? "available";
 }
 
+function formatPending(ms: number): string {
+  if (ms <= 0) return "0:00";
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function agentReachedLabel(status: AgentStatus): string {
+  return status === "reached" ? "Reached" : "Not reached";
+}
+
 type Props = {
   now: number;
   readyForPickup: ReadyForPickupOrder[];
+  pickedUp: PickedUpOrder[];
   delivered: FulfilledDelivery[];
   agents: DeliveryAgent[];
+  onMarkPickedUp: (tokenId: string) => void;
   onMarkDelivered: (tokenId: string) => void;
   onAgentStatus: (agentId: string, status: AgentStatus) => void;
+  className?: string;
+  ariaLabel?: string;
 };
 
 export function StatusSidebar({
   now,
   readyForPickup,
+  pickedUp,
   delivered,
   agents,
+  onMarkPickedUp,
   onMarkDelivered,
   onAgentStatus,
+  className,
+  ariaLabel = "Kitchen statuses",
 }: Props) {
   const fulfilledToday = countFulfilledToday(delivered, now);
 
   return (
-    <aside className="status-sidebar" aria-label="Kitchen statuses">
+    <aside
+      className={["status-sidebar", className].filter(Boolean).join(" ")}
+      aria-label={ariaLabel}
+    >
       <div className="status-sidebar__today" role="region" aria-labelledby="fulfilled-today-heading">
         <p id="fulfilled-today-heading" className="status-sidebar__today-label">
           Fulfilled today
@@ -48,23 +71,53 @@ export function StatusSidebar({
         </p>
       </div>
 
-      <h2 className="status-sidebar__title">Statuses</h2>
+      <h2 className="status-sidebar__title">Pickup and delivery</h2>
 
       <section className="status-block" aria-labelledby="ready-heading">
         <h3 id="ready-heading" className="status-block__title">
           Ready for pickup
         </h3>
-        <p className="status-block__hint">Token IDs (not grouped by batch)</p>
+        <p className="status-block__hint">4-digit tokens — not grouped by batch</p>
         {readyForPickup.length === 0 ? (
           <p className="status-block__empty">No orders waiting for pickup.</p>
         ) : (
           <ul className="status-list">
             {readyForPickup.map((o) => (
-              <li key={o.tokenId} className="status-list__row">
-                <span className="status-list__tokenGroup">
-                  <span className="status-list__token">{o.tokenId}</span>
-                  <ProviderBadge provider={o.provider} />
-                </span>
+              <li key={o.tokenId} className="status-list__row status-list__row--stacked">
+                <div className="status-list__rowTop">
+                  <span className="status-list__tokenGroup">
+                    <span className="status-list__token">Token {o.tokenId}</span>
+                    <ProviderBadge provider={o.provider} />
+                  </span>
+                  <span className="status-list__pending" aria-live="polite">
+                    Waiting {formatPending(now - o.readySinceAt)}
+                  </span>
+                </div>
+                <button type="button" className="btn btn--small" onClick={() => onMarkPickedUp(o.tokenId)}>
+                  Mark picked up
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="status-block" aria-labelledby="picked-heading">
+        <h3 id="picked-heading" className="status-block__title">
+          Picked up
+        </h3>
+        {pickedUp.length === 0 ? (
+          <p className="status-block__empty">Nothing in rider handoff.</p>
+        ) : (
+          <ul className="status-list">
+            {pickedUp.map((o) => (
+              <li key={o.tokenId} className="status-list__row status-list__row--stacked">
+                <div className="status-list__rowTop">
+                  <span className="status-list__tokenGroup">
+                    <span className="status-list__token">Token {o.tokenId}</span>
+                    <ProviderBadge provider={o.provider} />
+                  </span>
+                </div>
                 <button type="button" className="btn btn--small" onClick={() => onMarkDelivered(o.tokenId)}>
                   Mark delivered
                 </button>
@@ -84,7 +137,7 @@ export function StatusSidebar({
           <ul className="status-list status-list--plain">
             {delivered.map((d) => (
               <li key={`${d.tokenId}-${d.fulfilledAt}`} className="status-list__tokenOnly status-list__tokenOnly--withProvider">
-                <span className="status-list__token">{d.tokenId}</span>
+                <span className="status-list__token">Token {d.tokenId}</span>
                 <ProviderBadge provider={d.provider} />
               </li>
             ))}
@@ -96,7 +149,7 @@ export function StatusSidebar({
         <h3 id="agents-heading" className="status-block__title">
           Delivery agents
         </h3>
-        <p className="status-block__hint">Per token / availability</p>
+        <p className="status-block__hint">Reached = at handoff point</p>
         <ul className="agent-list">
           {agents.map((agent) => (
             <li key={agent.id} className="agent-list__row">
@@ -111,6 +164,7 @@ export function StatusSidebar({
                 <span className="agent-list__label">Token</span>
                 <span className="agent-list__token">{agent.tokenId ?? "—"}</span>
               </div>
+              <p className="agent-list__reach">{agentReachedLabel(agent.status)}</p>
               <button
                 type="button"
                 className="btn btn--small btn--ghost"
