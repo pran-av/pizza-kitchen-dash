@@ -3,6 +3,7 @@ import type { DeliveryProvider } from "../types/kitchen";
 const LABELS: Record<DeliveryProvider, string> = {
   swiggy: "Swiggy",
   zomato: "Zomato",
+  native: "Store",
 };
 
 type Props = {

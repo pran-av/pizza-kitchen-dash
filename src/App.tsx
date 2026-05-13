@@ -1,63 +1,74 @@
+import { useEffect } from "react";
 import { useKitchenDashboard } from "./state/useKitchenDashboard";
-import { StaffBatchCard } from "./components/StaffBatchCard";
-import { StatusSidebar } from "./components/StatusSidebar";
+import { MockLogin } from "./views/MockLogin";
+import { AdminDashboard } from "./views/AdminDashboard";
+import { StaffStoreDashboard } from "./views/StaffStoreDashboard";
 import "./dashboard.css";
 
 export default function App() {
-  const {
-    state,
-    now,
-    toggleMenu,
-    completeBatch,
-    assignDemoBatch,
-    markDelivered,
-    setAgentStatus,
-  } = useKitchenDashboard();
+  const k = useKitchenDashboard();
 
-  return (
-    <div className="dashboard">
-      <header className="dashboard__header">
-        <h1 className="dashboard__title">Yann Kitchen Dash</h1>
-        <button type="button" className="btn btn--secondary" onClick={assignDemoBatch}>
-          Simulate incoming batch
+  useEffect(() => {
+    document.body.classList.toggle("theme-high-contrast", k.state.ui.highContrast);
+  }, [k.state.ui.highContrast]);
+
+  if (k.state.ui.view === "login") {
+    return <MockLogin onStaff={k.loginStaff} onAdmin={k.loginAdmin} />;
+  }
+
+  const staffKey = k.state.ui.activeStaffKey;
+  const lane = k.currentStore.lanes[staffKey];
+
+  const staffDash = (
+    <StaffStoreDashboard
+      storeName={k.currentStore.name}
+      staffKey={staffKey}
+      staffLabel={lane.displayName}
+      lane={lane}
+      now={k.now}
+      onStaffChange={k.setActiveStaff}
+      showStaffPicker={k.state.ui.role === "admin" && k.state.ui.view === "admin_store"}
+      onToggleMenu={() => k.toggleMenu(staffKey)}
+      onStartCooking={() => k.startCooking(staffKey)}
+      onAcceptAi={() => k.acceptAiSuggestion(staffKey)}
+      onMarkPacked={() => k.markOrderPacked(staffKey)}
+      onMarkReadyForPickup={() => k.markReadyForPickup(staffKey)}
+      onInjectDemo={k.injectDemoBatch}
+      onMergeQueueBatchesIntoActive={(ids: string[]) => k.mergeQueueBatchesIntoActive(staffKey, ids)}
+      liveTrackingByDate={k.currentStore.liveTrackingByDate}
+      liveTrackingBoardDate={k.currentStore.liveTrackingBoardDate}
+      onLiveTrackingBoardDateChange={k.setLiveTrackingBoardDate}
+      onMarkPickedUp={k.markPickedUp}
+      onVoicePickup={k.voicePickup}
+      headerRight={
+        <button type="button" className="btn btn--ghost" onClick={k.logout}>
+          Log out
         </button>
-      </header>
-
-      <div className="dashboard__body">
-        <main className="dashboard__main" aria-label="Staff batch lanes">
-          <div className="dashboard__lanes">
-            <StaffBatchCard
-              staffKey="yann"
-              staffLabel={state.lanes.yann.displayName}
-              batch={state.lanes.yann.activeBatch}
-              queueLength={state.lanes.yann.queue.length}
-              menuExpanded={state.lanes.yann.menuExpanded}
-              now={now}
-              onToggleMenu={() => toggleMenu("yann")}
-              onComplete={() => completeBatch("yann")}
-            />
-            <StaffBatchCard
-              staffKey="pranav"
-              staffLabel={state.lanes.pranav.displayName}
-              batch={state.lanes.pranav.activeBatch}
-              queueLength={state.lanes.pranav.queue.length}
-              menuExpanded={state.lanes.pranav.menuExpanded}
-              now={now}
-              onToggleMenu={() => toggleMenu("pranav")}
-              onComplete={() => completeBatch("pranav")}
-            />
-          </div>
-        </main>
-
-        <StatusSidebar
-          now={now}
-          readyForPickup={state.readyForPickup}
-          delivered={state.delivered}
-          agents={state.agents}
-          onMarkDelivered={markDelivered}
-          onAgentStatus={setAgentStatus}
-        />
-      </div>
-    </div>
+      }
+    />
   );
+
+  if (k.state.ui.role === "staff" && k.state.ui.view === "staff_dashboard") {
+    return staffDash;
+  }
+
+  if (k.state.ui.role === "admin") {
+    return (
+      <AdminDashboard
+        stores={k.state.stores}
+        selectedStoreId={k.state.ui.selectedStoreId}
+        navTab={k.state.ui.adminNavTab}
+        onSelectStore={k.selectStore}
+        onNav={k.setAdminTab}
+        onOpenStore={k.openAdminStoreView}
+        onBack={k.backToAdminHome}
+        onToggleContrast={k.toggleHighContrast}
+        highContrast={k.state.ui.highContrast}
+        onLogout={k.logout}
+        child={k.state.ui.view === "admin_store" ? staffDash : null}
+      />
+    );
+  }
+
+  return null;
 }
